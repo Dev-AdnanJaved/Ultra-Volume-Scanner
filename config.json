@@ -1,0 +1,158 @@
+{
+  "binance": {
+    "api_key": "",
+    "api_secret": "",
+    "testnet": false
+  },
+  "telegram": {
+    "bot_token": "",
+    "chat_id": ""
+  },
+  "scanner": {
+    "timeframe": "1h",
+    "scan_interval_seconds": 900,
+    "breakout_lookback_candles": 24,
+    "consecutive_vol_candles": 3,
+    "consecutive_vol_min_ratio": 2.0,
+    "high_breakout_warning_pct": 5.0,
+    "max_price_change_24h_pct": 20.0,
+    "min_volume_usdt": 0,
+    "cooldown_hours": 72,
+    "excluded_symbols": [
+      "USDCUSDT",
+      "BTCDOMUSDT"
+    ],
+    "hard_filters": {
+      "vol_ratio_max": 15,
+      "funding_rate_min": -0.05,
+      "vol_24h_usdt_min": 5000000,
+      "market_cap_usd_max": 200000000
+    },
+    "soft_flags": {
+      "rvol_min": 2.0,
+      "market_cap_usd_max": 200000000,
+      "oi_growth_ratio_max": 50,
+      "funding_rate_min": -0.02,
+      "vol_24h_usdt_min": 5000000,
+      "price_change_24h_max": 15.0,
+      "ema50_distance_pct_max": 15.0,
+      "vol_ratio_max": 12.0,
+      "max_flags_to_block": 4
+    },
+    "quality_score": {
+      "rvol_sweet_spot_min": 4.0,
+      "rvol_sweet_spot_max": 8.0,
+      "rvol_adequate_min": 2.0,
+      "market_cap_usd_min": 10000000,
+      "market_cap_usd_max": 50000000,
+      "oi_growth_ratio_min": 5,
+      "oi_growth_ratio_max": 50,
+      "funding_rate_min": 0,
+      "vol_24h_usdt_min": 10000000,
+      "breakout_margin_pct_min": 0.5,
+      "breakout_margin_pct_max": 5.0,
+      "price_change_24h_min": 0,
+      "price_change_24h_max": 10.0
+    },
+    "btc_trend": {
+      "enabled": true,
+      "skip_on_dump": true,
+      "dump_threshold_pct": -3.0,
+      "pump_threshold_pct": 3.0
+    }
+  },
+  "tracker": {
+    "enabled": true,
+    "max_age_hours": 168,
+    "price_update_interval_seconds": 300,
+    "data_dir": "data",
+    "take_profit_targets": [
+      5,
+      10,
+      20,
+      30,
+      50,
+      75,
+      100
+    ],
+    "reversal_alert_enabled": false,
+    "min_reversal_peak_pct": 3.0,
+    "reversal_drop_from_peak_pct": 5.0,
+    "detailed_report_min_age_hours": 168,
+    "daily_report_hour": 0
+  },
+  "market_cap": {
+    "enabled": true,
+    "cache_minutes": 120
+  },
+  "rate_limit": {
+    "binance_delay_ms": 200
+  },
+  "trading": {
+    "enabled": false,
+    "paper_mode": false,
+    "paper_starting_balance": 1000.0,
+    "margin_type": "pct",
+    "margin_value": 5,
+    "leverage": 10,
+    "leverage_step": 5,
+    "leverage_min": 5,
+    "sl_pct": 15.0,
+    "max_open_trades": 5,
+    "check_interval_seconds": 60
+  },
+  "exit_strategy": {
+    "enabled": false,
+    "initial_sl_pct": 15.0,
+    "check_interval_seconds": 60,
+    "paper_check_interval_seconds": 15,
+    "tp5_slow_exit_hours": 24,
+    "time_limits_hours": {
+      "tp5_to_tp10": 48,
+      "tp10_to_tp20": 72,
+      "tp20_to_tp30": 48,
+      "tp30_to_tp50": 48,
+      "tp50_to_tp75": 48,
+      "tp75_to_tp100": 24
+    },
+    "close_pcts": {
+      "tp5_score_01": 100,
+      "tp5_score_23": 60,
+      "tp5_score_45": 30,
+      "tp5_score_6plus": 10,
+      "tp10_score_01": 100,
+      "tp10_score_23": 50,
+      "tp10_score_45": 20,
+      "tp10_score_6plus": 10,
+      "tp20_score_02": 50,
+      "tp20_score_35": 25,
+      "tp20_score_68": 10,
+      "tp30_score_02": 100,
+      "tp30_score_35": 30,
+      "tp30_score_68": 0,
+      "tp50": 30,
+      "tp75": 30,
+      "tp100": 50
+    },
+    "sl_ratchet": {
+      "tp5_pct": 0.0,
+      "tp5_ride_keep_sl": true,
+      "tp10_pct": 5.0,
+      "tp10_ride_pct": 0.0,
+      "tp20_pct": 12.0,
+      "tp30_trail_pct": 10.0,
+      "tp50_trail_pct": 8.0,
+      "tp75_trail_pct": 8.0,
+      "tp100_trail_pct": 12.0
+    },
+    "emergency_exit": {
+      "btc_dump_enabled": true,
+      "funding_spike_pct": 0.3,
+      "reversal_from_peak_pct": 15.0
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "log_file": "scanner.log"
+  }
+}

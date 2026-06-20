@@ -1,0 +1,14 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "dwYATrM4b0-8nAkORER8t"
+uri = "file://BOT_COMPLETE_REFERENCE.md"
+type = "text"
+title = "Bot Complete Reference — All Fields, Conditions & Timings"
+
+[[outputs]]
+id = "gVed1t05AI0EWGOj8JwJR"
+uri = "file://config_reference.md"
+type = "text"
+title = "config_reference.md"

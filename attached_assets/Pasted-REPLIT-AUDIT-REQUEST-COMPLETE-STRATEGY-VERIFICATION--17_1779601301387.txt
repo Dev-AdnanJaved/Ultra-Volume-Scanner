@@ -1,0 +1,251 @@
+REPLIT AUDIT REQUEST — COMPLETE STRATEGY VERIFICATION
+======================================================
+
+Please audit strategy_manager.py against EVERY rule below.
+For each rule, show me the EXACT lines of code that implement it.
+If anything is missing or wrong, fix it and show the corrected code.
+
+══════════════════════════════════════════════════════════════
+PART 1 — SCORING SYSTEM (used at TP5, TP10, TP20, TP30)
+══════════════════════════════════════════════════════════════
+
+The score (0–10) is calculated from the tp{N}_snapshot fields.
+IMPORTANT: read market_cap_usd from the SNAPSHOT, NOT from additional_data.
+
+SPEED scoring (TP5 / TP10 / TP20 — normal):
+  hit_hours_after_entry < 3h   → +3
+  hit_hours_after_entry 3–6h   → +2
+  hit_hours_after_entry 6–12h  → +1
+  hit_hours_after_entry ≥ 12h  → +0
+
+SPEED scoring (TP30 only — INVERTED, slow grind is ok):
+  hit_hours_after_entry < 12h  → +2
+  hit_hours_after_entry 12–48h → +1
+  hit_hours_after_entry ≥ 48h  → +0
+
+4H MOMENTUM (price_momentum_4h_pct from snapshot):
+  ≥ 8%  → +2
+  3–8%  → +1
+  < 3%  → +0
+
+1H MOMENTUM (price_momentum_1h_pct from snapshot):
+  ≥ 5%  → +2
+  2–5%  → +1
+  < 2%  → +0
+
+OI CHANGE (oi_change_pct from snapshot):
+  ≥ 15% → +2
+  5–15% → +1
+  < 5%  → +0
+
+MARKET CAP (market_cap_usd from snapshot — NOT from additional_data):
+  < $50,000,000 → +1
+  ≥ $50,000,000 → +0
+
+MAXIMUM SCORE = 10
+
+Show me the exact score() function code and confirm it reads
+market_cap_usd from snap = signal.get(f"tp{tp}_snapshot", {})
+
+
+══════════════════════════════════════════════════════════════
+PART 2 — TP5 RULES
+══════════════════════════════════════════════════════════════
+
+RULE 2A — SLOW EXIT (check this BEFORE scoring):
+  IF tp5_hit_hours_after_entry >= 24:
+    → Close 100% of position at market (reduceOnly)
+    → Move SL to entry price (0%)
+    → Do NOT calculate score
+    → Log reason: "TP5 slow exit — took 24h+"
+    → Start no further time limits (position closed)
+
+RULE 2B — SCORE-BASED (only if TP5 hit in < 24h):
+  Score 0–1 → Close 100% | SL → entry (0%) | time limit: 48h for TP10
+  Score 2–3 → Close 60%  | SL → entry (0%) | time limit: 48h for TP10
+  Score 4–5 → Close 30%  | SL → entry (0%) | time limit: 48h for TP10
+  Score 6+  → Close 10%  | SL stays at -15% (DO NOT MOVE) | time limit: 48h for TP10
+
+CRITICAL for Score 6+: The SL order must NOT be cancelled or moved.
+Only the SL order quantity should be updated to match the 90% remaining.
+The SL price stays exactly at entry_price × 0.85.
+
+Show me the exact code for all TP5 cases including the slow exit check.
+
+
+══════════════════════════════════════════════════════════════
+PART 3 — TP10 RULES
+══════════════════════════════════════════════════════════════
+
+Calculate score fresh using tp10_snapshot fields.
+
+  Score 0–1 → Close 100% remaining | SL → +5%  | time limit: 72h for TP20
+  Score 2–3 → Close 50% remaining  | SL → +5%  | time limit: 72h for TP20
+  Score 4–5 → Close 20% remaining  | SL → +5%  | time limit: 72h for TP20
+  Score 6+  → Close 10% remaining  | SL → 0%   | time limit: 72h for TP20
+
+CRITICAL: Score 6+ moves SL to entry (0%), NOT to +5%.
+All other scores (0–5) move SL to +5% above entry.
+SL prices:
+  +5%: new_sl = entry_price × 1.05
+  0%:  new_sl = entry_price × 1.00  (exactly entry)
+
+Show me the exact TP10 code block.
+
+
+══════════════════════════════════════════════════════════════
+PART 4 — TP20 RULES
+══════════════════════════════════════════════════════════════
+
+Calculate score fresh using tp20_snapshot fields.
+Speed uses normal thresholds (NOT inverted — TP30 is the inverted one).
+
+  Score 0–2 → Close 50% remaining  | SL → +12% | time limit: 48h for TP30
+  Score 3–5 → Close 25% remaining  | SL → +12% | time limit: 48h for TP30
+  Score 6–8 → Close 10% remaining  | SL → +12% | time limit: 48h for TP30
+
+CRITICAL: SL always moves to +12% at TP20 regardless of score.
+  new_sl = entry_price × 1.12
+
+Show me the exact TP20 code block.
+
+
+══════════════════════════════════════════════════════════════
+PART 5 — TP30 RULES
+══════════════════════════════════════════════════════════════
+
+Calculate score fresh using tp30_snapshot fields.
+Speed uses INVERTED thresholds (slow = better at TP30+).
+
+  Score 0–2 → Close 100% remaining | Switch to trail 10% | time limit: 48h for TP50
+  Score 3–5 → Close 30% remaining  | Switch to trail 10% | time limit: 48h for TP50
+  Score 6–8 → Close 0% (hold all)  | Switch to trail 10% | time limit: 48h for TP50
+
+CRITICAL: ALL TP30 scores switch to TRAILING STOP at 10% below running high.
+The trail is NOT a fixed SL. It must:
+  1. Record current price as trail_high
+  2. Every 60s: if current_price > trail_high → update trail_high
+  3. new_sl = trail_high × (1 - 0.10)
+  4. If new_sl > current_sl → cancel old SL, place new SL at new_sl
+
+Show me the exact TP30 code block and the trailing stop update loop.
+
+
+══════════════════════════════════════════════════════════════
+PART 6 — TP50, TP75, TP100 RULES (trail only, no scoring)
+══════════════════════════════════════════════════════════════
+
+TP50:
+  → Close 30% of remaining position
+  → Tighten trail from 10% → 8% below running high
+  → Time limit: 48h for TP75
+
+TP75:
+  → Close 30% of remaining position
+  → Keep trail at 8% below running high
+  → Time limit: 24h for TP100
+
+TP100:
+  → Close 50% of remaining position
+  → Keep trail at 8% below running high
+  → NO time limit — exit on 2 consecutive red 4h candles
+  → OR trail SL hit — whichever comes first
+
+Show me the exact TP50, TP75, TP100 code blocks.
+
+
+══════════════════════════════════════════════════════════════
+PART 7 — TIME LIMIT ENFORCEMENT
+══════════════════════════════════════════════════════════════
+
+When a time limit expires (e.g. 48h passed since TP5 with no TP10):
+  1. Place MARKET SELL reduceOnly order for 100% of remaining position
+  2. Cancel the existing SL order AFTER market sell confirms
+  3. Mark trade status as "closed_time_limit"
+  4. Do NOT move SL — close the position entirely
+
+Time limits (hours from PREVIOUS TP hit, not from signal entry):
+  TP5  → TP10 : 48h
+  TP10 → TP20 : 72h
+  TP20 → TP30 : 48h
+  TP30 → TP50 : 48h
+  TP50 → TP75 : 48h
+  TP75 → TP100: 24h
+
+Show me the _check_time_limits() function and confirm:
+  a) Clock starts from PREVIOUS TP hit time, not signal entry time
+  b) Exit is MARKET order, not SL move
+  c) SL is cancelled AFTER market fill confirmed
+
+
+══════════════════════════════════════════════════════════════
+PART 8 — EMERGENCY EXITS
+══════════════════════════════════════════════════════════════
+
+These override ALL other rules and trigger immediately:
+
+  E1. BTC switches to dumping mid-trade:
+      → Set SL to (current_price × 0.95) on ALL open trades immediately
+      → This is -5% from CURRENT price, not from entry
+      → Do NOT close at market — just tighten SL so it triggers naturally
+
+  E2. Funding rate > 0.3% on the coin:
+      → Close 100% of that trade at market immediately
+      → Cancel SL order after fill
+
+  E3. Price reverses 15%+ from peak (not from entry — from PEAK):
+      → Close 100% at market immediately
+      → e.g. peak was +40%, price now at +25% = 15% drop from peak → EXIT
+
+Show me the emergency exit code and confirm E3 tracks peak_price
+separately from entry_price.
+
+
+══════════════════════════════════════════════════════════════
+PART 9 — SL RATCHET SUMMARY (never moves backward)
+══════════════════════════════════════════════════════════════
+
+SL can ONLY move up (toward profit), never down.
+If calculated new_sl < current_sl → do NOT update, keep current_sl.
+
+Full progression:
+  Signal entry      → SL at entry × 0.85  (-15%)
+  TP5 score 0–5     → SL at entry × 1.00  (0%)
+  TP5 score 6+      → SL stays at entry × 0.85 (unchanged)
+  TP10 score 0–5    → SL at entry × 1.05  (+5%)
+  TP10 score 6+     → SL at entry × 1.00  (0%)
+  TP20 any score    → SL at entry × 1.12  (+12%)
+  TP30 any score    → Switch to trail (trail_high × 0.90)
+  TP50 any          → Trail tightens (trail_high × 0.92)
+  TP75 any          → Trail stays (trail_high × 0.92)
+  TP100 any         → Trail stays (trail_high × 0.92)
+
+Show me the code that enforces "new_sl > current_sl" before updating.
+
+
+══════════════════════════════════════════════════════════════
+PART 10 — DATA WIRING
+══════════════════════════════════════════════════════════════
+
+1. Confirm strategy_manager.py reads open trades from the SAME
+   file/source that tracker.py writes to.
+   Show me both the write path in tracker.py and the read path
+   in strategy_manager.py.
+
+2. Confirm that when a partial close happens (e.g. close 30% at TP5),
+   the remaining_quantity in the trade record is updated correctly
+   so subsequent closes are calculated on the REMAINING position,
+   not the original full position.
+
+3. Confirm the SL order on Binance is always placed as:
+   - Side: SELL
+   - Type: STOP_MARKET
+   - reduceOnly: true
+   - closePosition: false (so partial SL is possible)
+   - quantity: exactly the remaining position size
+
+Show me the _replace_sl() or equivalent function.
+
+══════════════════════════════════════════════════════════════
+END OF AUDIT — please respond with code for each part
+══════════════════════════════════════════════════════════════

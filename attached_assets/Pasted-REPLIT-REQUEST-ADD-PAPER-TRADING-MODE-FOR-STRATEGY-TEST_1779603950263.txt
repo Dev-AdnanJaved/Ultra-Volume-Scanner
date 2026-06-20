@@ -1,0 +1,178 @@
+REPLIT REQUEST — ADD PAPER TRADING MODE FOR STRATEGY TESTING
+=============================================================
+
+Please add a paper trading mode that simulates the complete
+exit strategy using real Binance market data but zero real orders.
+This lets us verify every rule works correctly before going live.
+
+══════════════════════════════════════════════════════════════
+WHAT TO ADD
+══════════════════════════════════════════════════════════════
+
+Add this to config.json under "trading":
+  "paper_mode": true
+
+When paper_mode = true:
+  - ALL Binance order calls (place_order, cancel_order, etc.)
+    are SKIPPED — no real orders placed
+  - Real Binance PRICE DATA is still fetched (read-only)
+  - A fake paper portfolio is tracked in data/paper_trades.json
+  - Every action that would happen in live trading is
+    LOGGED to Telegram with prefix 📝 PAPER:
+
+══════════════════════════════════════════════════════════════
+PAPER PORTFOLIO TRACKING (data/paper_trades.json)
+══════════════════════════════════════════════════════════════
+
+When a signal fires in paper mode, create a paper trade:
+{
+  "symbol": "CATIUSDT",
+  "entry_price": 0.05553,
+  "entry_time": "2026-05-23 13:27:41",
+  "position_size_usdt": 10.0,      ← fake money (e.g. $10 per trade)
+  "leverage": 5,
+  "remaining_pct": 100.0,          ← % of position still open
+  "sl_price": 0.04720,             ← entry × 0.85
+  "sl_type": "fixed",              ← "fixed" or "trailing"
+  "trail_high": null,
+  "current_sl": 0.04720,
+  "tps_hit": [],
+  "status": "open",
+  "paper": true
+}
+
+══════════════════════════════════════════════════════════════
+TELEGRAM MESSAGES IN PAPER MODE
+══════════════════════════════════════════════════════════════
+
+Every action sends a Telegram message so we can verify in real time.
+
+On signal entry:
+📝 PAPER TRADE OPENED
+Symbol: CATIUSDT
+Entry: $0.05553
+Position: $10.00 (fake)
+Leverage: 5x
+SL set at: $0.04720 (-15%)
+Max concurrent: 5 slots
+
+On SL hit (price crosses sl_price):
+📝 PAPER SL HIT
+Symbol: CATIUSDT
+SL triggered at: $0.04720
+Loss: -$1.50 (-15%)
+Remaining: $0 (closed)
+
+On TP5 hit:
+📝 PAPER TP5 HIT
+Symbol: CATIUSDT
+TP5 hit in: 0.67h
+Score: 7/10 → RIDE (close 10%)
+Closed 10% at $0.05831 → +$0.05
+Remaining: 90% open
+SL stays at: $0.04720 (RIDE — no move)
+⏱ TP10 deadline: 48h from now
+
+On TP10 hit:
+📝 PAPER TP10 HIT
+Symbol: CATIUSDT
+Score: 6/10 → close 10%
+Closed 10% at $0.06108 → +$0.06
+Remaining: 80% open
+SL moved to: $0.05553 (entry, 0%) ← score 6+ rule
+⏱ TP20 deadline: 72h from now
+
+On time limit expired:
+📝 PAPER TIME LIMIT HIT
+Symbol: CATIUSDT
+48h passed since TP5 — no TP10
+Closing remaining 90% at market: $0.05600
+PnL on remaining: +$0.04
+Total trade PnL: +$0.09
+
+On emergency exit:
+📝 PAPER EMERGENCY EXIT — BTC DUMPING
+Symbol: CATIUSDT
+SL tightened to: $0.05400 (-5% from current $0.05684)
+
+On trade close (any reason):
+📝 PAPER TRADE CLOSED
+Symbol: CATIUSDT
+Reason: TP20 time limit
+Total PnL: +$0.35 (+3.5%)
+Open: 2h 14m
+
+══════════════════════════════════════════════════════════════
+DAILY PAPER SUMMARY (send at midnight UTC)
+══════════════════════════════════════════════════════════════
+
+📊 PAPER TRADING DAILY SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Trades today:     8
+TP5 hit:          6/8 (75%)
+TP10 hit:         4/8 (50%)
+SL hits:          1/8 (12.5%)
+Time limits hit:  1/8
+Total paper PnL: +$2.34 (+23.4%)
+
+Open trades:      3
+  CATIUSDT  +4.2%  (waiting TP10)
+  BANUSDT   -3.1%  (above SL)
+  XYZUSDT   +8.1%  (waiting TP20)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+══════════════════════════════════════════════════════════════
+HOW TO ENABLE
+══════════════════════════════════════════════════════════════
+
+config.json:
+{
+  "trading": {
+    "enabled": true,        ← must be true
+    "paper_mode": true,     ← this makes it paper only
+    "margin_value": 2,
+    "leverage": 5,
+    "sl_pct": 15.0,
+    "max_open_trades": 5
+  },
+  "exit_strategy": {
+    "enabled": true         ← must be true
+  }
+}
+
+When both enabled=true AND paper_mode=true:
+  → All strategy logic runs exactly as live
+  → All scoring, SL moves, partial closes, time limits run
+  → Zero real orders placed on Binance
+  → Everything logged to Telegram with 📝 PAPER prefix
+
+══════════════════════════════════════════════════════════════
+WHAT THIS LETS US VERIFY
+══════════════════════════════════════════════════════════════
+
+1. SL placement — see exact SL price in Telegram on every entry
+2. TP5 scoring — see score, action, % closed, new SL in alert
+3. RIDE mode — confirm SL stays at -15% for score 6+
+4. TP10 SL — see it move to 0% for score 6+ vs +5% for others
+5. TP20 SL — see it always move to +12%
+6. TP30 trail — see trail activate and update as price rises
+7. Time limits — see market close when 48h/72h expires
+8. Emergency exits — trigger by manually setting BTC to dump
+9. Position sizing — see fake $ amounts per trade
+10. Data wiring — confirm paper_trades.json updates correctly
+
+══════════════════════════════════════════════════════════════
+TESTING CHECKLIST (run after paper mode is live)
+══════════════════════════════════════════════════════════════
+
+Wait for next real signal then verify in Telegram:
+
+□ Signal fires → see 📝 PAPER TRADE OPENED with correct SL price
+□ Price check → confirm SL = entry × 0.85 exactly
+□ TP5 hits → see score, action (close %), new SL level
+□ If score 6+ → SL must still show -15% (not moved)
+□ If score 0-5 → SL must show entry price (0%)
+□ TP10 hits → SL moves to +5% (or 0% if score 6+)
+□ Time limit → see PAPER TIME LIMIT message at exactly 48h
+□ Check paper_trades.json → remaining_pct updates correctly
+□ Daily summary → arrives at midnight UTC
